@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>JNP Cargo Movers - Expense Approval</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* iOS input auto-zoom prevention */
+    input, select, textarea { font-size: 16px !important; }
+    .autocomplete-list { max-height: 200px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    body { padding-bottom: env(safe-area-inset-bottom, 25px); }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 p-3 sm:p-6" onclick="closeAllDropdowns()">
+  <div class="max-w-md mx-auto bg-white shadow-xl rounded-2xl p-4 sm:p-5 border border-slate-200" onclick="event.stopPropagation()">
+    
+    <!-- Top Bar with JNP Header -->
+    <div class="border-b border-slate-200 pb-3 mb-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-red-700 text-white flex items-center justify-center font-black text-sm shadow">JNP</div>
+        <div>
+          <h1 class="text-sm sm:text-base font-extrabold text-red-700 tracking-tight leading-tight">EXPENSE APPROVAL</h1>
+          <p class="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">JNP Fleet Operations</p>
+        </div>
+      </div>
+      <button type="button" onclick="fetchMasters()" class="text-xs text-red-700 font-bold hover:underline py-1 px-2.5 rounded-lg bg-red-50 border border-red-200">↻ Sync</button>
+    </div>
+
+    <!-- Active Expense Form -->
+    <form id="expenseForm" onsubmit="handleFormSubmit(event)" class="space-y-3" autocomplete="off">
+      
+      <!-- Submitted By -->
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Request Submitted By *</label>
+        <select id="staffSelect" onchange="toggleCustomStaff()" required class="w-full border rounded-xl p-2.5 bg-slate-50 font-medium">
+          <option value="">Select Staff...</option>
+        </select>
+        <input type="text" id="staffCustom" placeholder="Enter your name" class="hidden mt-1.5 w-full border border-red-400 rounded-xl p-2.5 bg-red-50 font-medium" />
+      </div>
+
+      <!-- Truck Number -->
+      <div class="relative">
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">1. Truck Number *</label>
+        <input 
+          type="text" 
+          id="truckInput" 
+          required 
+          placeholder="e.g. MH18BZ0271 or 0271" 
+          class="w-full border rounded-xl p-2.5 bg-slate-50 font-semibold uppercase tracking-wide focus:bg-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+          oninput="filterOptions('truck', this.value)"
+          onfocus="filterOptions('truck', this.value)"
+        />
+        <div id="truckDropdown" class="autocomplete-list hidden absolute z-30 w-full bg-white border border-slate-300 rounded-xl shadow-2xl mt-1"></div>
+      </div>
+
+      <!-- Driver Name -->
+      <div class="relative">
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">2. Driver Name *</label>
+        <input 
+          type="text" 
+          id="driverInput" 
+          required 
+          placeholder="Type driver name..." 
+          class="w-full border rounded-xl p-2.5 bg-slate-50 font-semibold focus:bg-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+          oninput="filterOptions('driver', this.value)"
+          onfocus="filterOptions('driver', this.value)"
+        />
+        <div id="driverDropdown" class="autocomplete-list hidden absolute z-30 w-full bg-white border border-slate-300 rounded-xl shadow-2xl mt-1"></div>
+      </div>
+
+      <!-- Current Location -->
+      <div class="relative">
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">3. Current Location *</label>
+        <input 
+          type="text" 
+          id="locationInput" 
+          required 
+          placeholder="e.g. DHULE BYPASS / NASHIK" 
+          class="w-full border rounded-xl p-2.5 bg-slate-50 font-semibold uppercase focus:bg-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+          oninput="filterOptions('location', this.value)"
+          onfocus="filterOptions('location', this.value)"
+        />
+        <div id="locationDropdown" class="autocomplete-list hidden absolute z-30 w-full bg-white border border-slate-300 rounded-xl shadow-2xl mt-1"></div>
+      </div>
+
+      <!-- Expense Work / Reason -->
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">4. Expense Work / Reason *</label>
+        <textarea id="workReason" required rows="2" placeholder="e.g. Clutch plate repair + pressure plate change" class="w-full border rounded-xl p-2.5 bg-slate-50 font-medium"></textarea>
+      </div>
+
+      <!-- Estimate & Selected Vendor -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">5. Est. Amount (₹) *</label>
+          <input type="number" step="any" id="estAmount" required placeholder="e.g. 8500" class="w-full border rounded-xl p-2.5 bg-slate-50 font-bold text-slate-900" />
+        </div>
+        <div class="relative">
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">6. Selected Vendor *</label>
+          <input 
+            type="text" 
+            id="vendorInput" 
+            required 
+            placeholder="Vendor name" 
+            class="w-full border rounded-xl p-2.5 bg-slate-50 font-medium focus:bg-white focus:ring-2 focus:ring-red-500"
+            oninput="filterOptions('vendor', this.value)"
+            onfocus="filterOptions('vendor', this.value)"
+          />
+          <div id="vendorDropdown" class="autocomplete-list hidden absolute z-30 w-full bg-white border border-slate-300 rounded-xl shadow-2xl mt-1"></div>
+        </div>
+      </div>
+
+      <!-- Next Best Quote & 2nd Vendor -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">7. 2nd Quote (₹)</label>
+          <input type="number" step="any" id="altQuote" placeholder="Optional" class="w-full border rounded-xl p-2.5 bg-slate-50 font-medium" />
+        </div>
+        <div class="relative">
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">8. 2nd Vendor</label>
+          <input 
+            type="text" 
+            id="altVendorInput" 
+            placeholder="Alt vendor" 
+            class="w-full border rounded-xl p-2.5 bg-slate-50 font-medium focus:bg-white focus:ring-2 focus:ring-red-500"
+            oninput="filterOptions('altVendor', this.value)"
+            onfocus="filterOptions('altVendor', this.value)"
+          />
+          <div id="altVendorDropdown" class="autocomplete-list hidden absolute z-30 w-full bg-white border border-slate-300 rounded-xl shadow-2xl mt-1"></div>
+        </div>
+      </div>
+
+      <!-- Urgency / Remark -->
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">9. Urgency / Remark</label>
+        <input type="text" id="urgencyRemark" placeholder="e.g. HIGH - Truck standing loaded at toll" class="w-full border rounded-xl p-2.5 bg-slate-50 font-medium" />
+      </div>
+
+      <!-- Submit Button -->
+      <div class="pt-2">
+        <button type="submit" id="saveBtn" class="w-full py-3 bg-red-600 active:bg-red-800 text-white font-bold text-sm rounded-xl shadow-lg transition">
+          Record & Generate WhatsApp Approval
+        </button>
+      </div>
+    </form>
+
+    <!-- WhatsApp Share Panel -->
+    <div id="shareSection" class="hidden mt-4 p-4 border border-emerald-300 bg-emerald-50 rounded-xl space-y-2.5">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">✅</span>
+        <h3 class="text-xs font-bold text-emerald-950 uppercase tracking-wide">Saved! Forward to Approver on WhatsApp:</h3>
+      </div>
+
+      <button type="button" id="shareBtn" onclick="handleWhatsAppShare()" class="w-full py-3 bg-emerald-600 active:bg-emerald-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow">
+        <span>📲</span> Send Approval Request via WhatsApp
+      </button>
+
+      <button type="button" onclick="resetForm()" class="w-full py-2.5 bg-slate-200 active:bg-slate-300 text-slate-700 font-semibold text-xs rounded-xl transition">
+        ➕ New Request
+      </button>
+    </div>
+
+    <div id="statusToast" class="hidden mt-3 text-center text-xs font-bold p-2.5 rounded-xl"></div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby97AvJ1YTsd0t6Jcp3Ucy-ulrguaYrHU99W-rUino2NpGIaN3H8Sgdqhp94ZRWTnJC/exec";
+
+    let lastSavedData = null;
+
+    let masterData = {
+      staff: ["Atul", "Hemant", "Akshay", "Ganesh", "Rahul", "Satish", "Chetan", "Sumit"],
+      trucks: ["MH40CM8975","MH40BL4725","MH18BZ0274","MH40CM1550","MH18BZ0106","MH18BZ0107","MH14KA9717","MH40CM2748","MH40DC1236","MH18BZ0112","MH40CM1569","OD01AB2773","UP95T9393","MH40CM1570","CG07CG1594","MH18BZ0105","MH18BZ0109","OD01AB2873","AP04UB2935","CG07CG1595","CG07CG1596","MH21BH4147","MH18BZ0268","MH18BZ0269","MH18BZ0271","MH18BZ0272","MH18BG8250","MH18BG8251","MH18BG8252","MH18BZ0110","MH18BZ0113","MH18BZ0267","CG07CG2120","MH18BG8256","MH18BG8257","MH18BZ0108","MH18BZ0270","MH18BZ0275","MH18BG8253","MH40CM2747","MH40CM2746","MH40CD4841","MH40CM7805","OD04M6659","CG07CG1597","MH40CM0731","MH18BZ0273","MH18BZ0276"],
+      drivers: ["AKIL KHAN","SHAKIL KHAN","FEROZ KHAN","SANJAY KHABRE","DEVIDAS PATIL","PRAMOD SONWANE","MD IBARAR","RAHUL PAL","RAJESH SHARMA","KRISHNAKUMAR SAHU","RANJIT SONI","BHATU MAHALE","ABDULLAH","MAHENDRA VISHWAKARMA","PRAVIN BHOIR","SINTU YADAV","SUNIL SAHU","OMPRAKASH SAHU","ASHOK SAHU","MD SAGEER","TINKU YADAV","MD MIRAJ","SHOEB PATHAN","KAILASH PATIL","javed ali","asif shaikh","samadhan patil","yunus ansari","ISHWAR BHILL","MAHMOOD KHAN","SHARUKH KHTIK","RAHUL PAAL","MIRAJ AHMED","samadhan kadam","MOHSIN KHAN"],
+      locations: ["DHULE", "NASHIK", "VILHOLI", "OZAR", "NAGPUR", "INDORE", "PUNE"],
+      vendors: ["SHREE GANESH TYRES", "NEW BOMBAY GARAGE", "MAHALAXMI AUTO", "OM MOTORS"]
+    };
+
+    window.addEventListener('DOMContentLoaded', fetchMasters);
+
+    async function fetchMasters() {
+      populateStaff(masterData.staff);
+      try {
+        const res = await fetch(SCRIPT_URL, { method: "GET" });
+        if (res.ok) {
+          const liveData = await res.json();
+          masterData = liveData;
+          populateStaff(masterData.staff);
+        }
+      } catch (e) {
+        console.log("Cached masters ready");
+      }
+    }
+
+    function populateStaff(staffList) {
+      const select = document.getElementById('staffSelect');
+      const cur = select.value;
+      select.innerHTML = '<option value="">Select Staff...</option>';
+      (staffList || []).forEach(s => select.innerHTML += `<option value="${s}">${s}</option>`);
+      select.innerHTML += '<option value="__OTHER__">➕ Other / Enter Name</option>';
+      if (cur) select.value = cur;
+    }
+
+    function toggleCustomStaff() {
+      const sel = document.getElementById('staffSelect');
+      const inp = document.getElementById('staffCustom');
+      if (sel.value === "__OTHER__") {
+        inp.classList.remove('hidden'); inp.required = true; inp.focus();
+      } else {
+        inp.classList.add('hidden'); inp.required = false; inp.value = '';
+      }
+    }
+
+    function filterOptions(type, query) {
+      closeAllDropdowns();
+      const dropdownEl = document.getElementById(type + 'Dropdown');
+      
+      let items = [];
+      if (type === 'truck') items = masterData.trucks;
+      else if (type === 'driver') items = masterData.drivers;
+      else if (type === 'location') items = masterData.locations;
+      else if (type === 'vendor' || type === 'altVendor') items = masterData.vendors;
+
+      const q = query.replace(/\s+/g, '').toUpperCase();
+      const matched = q ? items.filter(i => i.toUpperCase().includes(q)) : items;
+
+      let html = '';
+      if (matched.length > 0) {
+        matched.forEach(item => {
+          html += `
+            <div class="px-3 py-2.5 text-xs font-semibold hover:bg-red-50 cursor-pointer border-b border-slate-100 flex justify-between items-center"
+                 onclick="selectOption('${type}', '${item.replace(/'/g, "\\'")}')">
+              <span>${item}</span>
+              <span class="text-[10px] text-slate-400">Master</span>
+            </div>`;
+        });
+      }
+
+      const exactExists = items.some(i => i.toUpperCase() === q);
+      if (q && !exactExists) {
+        html += `
+          <div class="px-3 py-2.5 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 cursor-pointer flex justify-between items-center"
+               onclick="selectOption('${type}', '${q.replace(/'/g, "\\'")}')">
+            <span>➕ Use "${q}"</span>
+            <span class="text-[10px] bg-red-200 text-red-800 px-1.5 py-0.5 rounded">New</span>
+          </div>`;
+      }
+
+      dropdownEl.innerHTML = html;
+      dropdownEl.classList.remove('hidden');
+    }
+
+    function selectOption(type, value) {
+      document.getElementById(type + 'Input').value = value;
+      closeAllDropdowns();
+    }
+
+    function closeAllDropdowns() {
+      ['truckDropdown', 'driverDropdown', 'locationDropdown', 'vendorDropdown', 'altVendorDropdown'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      closeAllDropdowns();
+
+      const staffSel = document.getElementById('staffSelect');
+      const submittedBy = staffSel.value === "__OTHER__" ? document.getElementById('staffCustom').value.trim() : staffSel.value;
+      const truckVal = document.getElementById('truckInput').value.replace(/\s+/g, '').toUpperCase();
+      const estAmt = document.getElementById('estAmount').value.trim();
+
+      const truckRegex = /^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/;
+      if (!truckRegex.test(truckVal)) {
+        alert("Invalid Truck Number! Must be 2 letters, 2 digits, 2 letters, 4 digits without space (e.g. MH18BZ0271).");
+        return;
+      }
+
+      if (isNaN(estAmt) || Number(estAmt) <= 0) {
+        alert("Please enter a valid Estimated Amount.");
+        return;
+      }
+
+      lastSavedData = {
+        submittedBy: submittedBy,
+        truckNo: truckVal,
+        driverName: document.getElementById('driverInput').value.trim(),
+        location: document.getElementById('locationInput').value.trim().toUpperCase(),
+        workReason: document.getElementById('workReason').value.trim(),
+        estAmount: estAmt,
+        vendor: document.getElementById('vendorInput').value.trim(),
+        altQuote: document.getElementById('altQuote').value.trim() || 0,
+        altVendor: document.getElementById('altVendorInput').value.trim() || "N/A",
+        urgencyRemark: document.getElementById('urgencyRemark').value.trim() || "Normal"
+      };
+
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+      saveBtn.innerText = "Saving to Google Sheet...";
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(lastSavedData)
+        });
+
+        document.getElementById('expenseForm').classList.add('opacity-50', 'pointer-events-none');
+        document.getElementById('shareSection').classList.remove('hidden');
+        showToast("Saved to Google Sheet!", "emerald");
+      } catch (err) {
+        document.getElementById('expenseForm').classList.add('opacity-50', 'pointer-events-none');
+        document.getElementById('shareSection').classList.remove('hidden');
+        showToast("Saved to Sheet! (Check live rows).", "emerald");
+      }
+    }
+
+    function handleWhatsAppShare() {
+      if (!lastSavedData) return;
+
+      const msg = 
+`🔴 *EXPENSE APPROVAL REQUEST*
+━━━━━━━━━━━━━━━━━━
+🚚 *Truck No:* ${lastSavedData.truckNo}
+👤 *Driver:* ${lastSavedData.driverName}
+📍 *Location:* ${lastSavedData.location}
+🛠️ *Work / Reason:* ${lastSavedData.workReason}
+💰 *Est. Amount:* ₹${lastSavedData.estAmount}
+🏪 *Selected Vendor:* ${lastSavedData.vendor}
+📊 *Next Best Quote:* ₹${lastSavedData.altQuote} (${lastSavedData.altVendor})
+⚠️ *Urgency / Remark:* ${lastSavedData.urgencyRemark}
+━━━━━━━━━━━━━━━━━━
+📝 *Submitted By:* ${lastSavedData.submittedBy}
+*(Please reply with APPROVED or REJECTED)*`;
+
+      window.location.href = "whatsapp://send?text=" + encodeURIComponent(msg);
+      document.getElementById('shareBtn').innerText = "✓ Sent to WhatsApp (Tap to re-send)";
+    }
+
+    function resetForm() {
+      document.getElementById('expenseForm').reset();
+      document.getElementById('expenseForm').classList.remove('opacity-50', 'pointer-events-none');
+      document.getElementById('shareSection').classList.add('hidden');
+      document.getElementById('staffCustom').classList.add('hidden');
+      document.getElementById('staffCustom').required = false;
+
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = false;
+      saveBtn.innerText = "Record & Generate WhatsApp Approval";
+      hideToast();
+      fetchMasters();
+    }
+
+    function showToast(text, color) {
+      const toast = document.getElementById('statusToast');
+      toast.className = `mt-3 text-center text-xs font-bold p-2.5 rounded-xl bg-${color}-100 text-${color}-800`;
+      toast.innerText = text;
+      toast.classList.remove('hidden');
+    }
+
+    function hideToast() {
+      document.getElementById('statusToast').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
